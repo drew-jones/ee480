@@ -1,0 +1,35 @@
+\documentclass{sig-alternate-05-2015}
+\begin{document}
+
+% ACM templates include ISBN and DOI...
+\isbn{N.A.}
+\doi{N.A.}
+
+\title{EE480 Assignment 1: Average Two 8-Bit Unsigned Binary Integers}
+\subtitle{Implementor's Notes}
+
+\numberofauthors{1}
+\author{
+Matt Ruffner\\
+       \email{\texttt{matthew.ruffner@uky.edu}}
+}
+
+\maketitle
+\begin{abstract}
+This assignment served as an inaugural project for familiarization with verilog. It incorporated writing modules, reference 'oracles' and test benches, as well as methods to exhaustively test all parts.
+\end{abstract}
+
+
+\section{General Approach}
+There are two operations necessary to complete the task assigned: addition, and division. Luckily, the division is by 2, so we are able to change the scope of valid bits to preform the task. 
+
+The addition was accomplished with 8 full adders assembled into one ripple carry adder. In order to round up, a one must be added onto the existing sum before division. This is done by feeding a \texttt{1} into the carry in of the ripple carry adder.
+
+Bit slicing was preformed in order to accommodate the division, resulting in only looking at the high 7 bits. This however, limits our range. To ensure we can add numbers who's sum exceeds 255, the carry out from the ripple adder is set as the new MSB.
+
+% insert a break to roughly level columns...
+\vfill\pagebreak
+
+\section{Issues}
+All 65536 test cases passed with no issues.
+\end{document}

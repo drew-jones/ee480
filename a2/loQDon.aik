@@ -1,0 +1,6 @@
+.Reg $rd,$rs,$rt := .this:4 rd:4 rs:4 rt:4
+
+.alias .Reg 0 add addv and or xor
+
+.Imm $rd,imm := .this:4 rd:4 imm:8
+

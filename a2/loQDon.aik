@@ -1,6 +1,43 @@
-.Reg $rd,$rs,$rt := .this:4 rd:4 rs:4 rt:4
+; EE480 Fall 2016
+; AIK loQDon assembler definition
+; October 1, 2016
+; Matt Ruffner
 
-.alias .Reg 0 add addv and or xor
 
-.Imm $rd,imm := .this:4 rd:4 imm:8
+; Three parameter instructions
 
+add	$.d,$.s,$.t	:=	0b0000:4 .d:4 .s:4 .t:4
+addv  	$.d,$.s,$.t	:=	0b0001:4 .d:4 .s:4 .t:4
+and    	$.d,$.s,$.t	:=	0b0010:4 .d:4 .s:4 .t:4
+or     	$.d,$.s,$.t	:=	0b0011:4 .d:4 .s:4 .t:4
+xor    	$.d,$.s,$.t	:=	0b0100:4 .d:4 .s:4 .t:4
+shift  	$.d,$.s,$.t	:=	0b0101:4 .d:4 .s:4 .t:4
+pack   	$.d[.p],$.s	:=	0b0110:4 .d:4 .s:4 .p:4
+unpack 	$.d,$.s[.p]	:=	0b0111:4 .d:4 .s:4 .p:4
+
+
+; Two parameter instructions
+
+li	$.d,.i		:=	0b1000:4 .d:4 .i:8
+morei	$.d,.i		:=	0b1001:4 .d:4 .i:8
+any	$.d,$.s		:=	0b1010:4 .d:4 .s:4 0:4
+anyv	$.d,$.s		:=	0b1011:4 .d:4 .s:4 0:4
+neg	$.d,$.s		:=	0b1100:4 .d:4 .s:4 0:4
+negv	$.d,$.s		:=	0b1101:4 .d:4 .s:4 0:4
+
+sys			:=	0b1110:4 0:12
+
+st	$.t, $.s	:=	0b1111:4 .t:4 .s:4 0b0001:4
+ld	$.d, $.s	:=	0b1111:4 .d:4 .s:4 0b0010:4
+jnz	$.c, $.a	:=	0b1111:4 .c:4 .a:4 0b0011:4
+jz	$.c, $.a	:= 	0b1111:4 .c:4 .a:4 0b0100:4
+nop	     		:=	1:16
+
+.const {
+  zero pc sp fp ra rv
+  u0 u1 u2 u3 u4
+  u5 u6 u7 u8 u9
+}
+
+.segment .text 16 0x10000 0 .VMEM
+.segment .data 32 0x10000 0 .VMEM

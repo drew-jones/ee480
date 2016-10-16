@@ -1,5 +1,5 @@
-FILE=a3.v
-OUTPUT=a3
+FILE=loQDon.v
+OUTPUT=loQDon
 
 default:
 	iverilog $(FILE) -o $(OUTPUT)

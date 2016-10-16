@@ -114,19 +114,21 @@ module processor(halt, clk, reset);
       
       $readmemh("text.vmem", codemem);
       $readmemh("data.vmem", mainmem);
-
-      $readmemh("data.vmem", regfile,15,0);
+      $readmemh("reg.vmem", regfile);
       
    end
 
 
    always @(posedge clk) begin
-      //$display("\t\tpc=",pc,"\ts=",s,"\tmainmem[mainmem[ir `Dest]]=", mainmem[mainmem[ir `Dest]]);
       
       case (s)
 	`Start: begin 
 	   ir <= codemem[pc];
 	   s <= `Start1;
+
+	   $display("$u0: ", regfile[6],"\n$u1: ", regfile[7],"\n$u2: ", regfile[8],"\n$u3: ", regfile[9],"\n$u4: ", regfile[10],"\n$u5: ", regfile[11],"\n$u6: ", regfile[12],"\n$u7: ", regfile[13], "\n$u8: ", regfile[14], "\n$u9: ", regfile[15]);
+
+
 	end
 	
 	`Start1: begin
@@ -172,12 +174,16 @@ module processor(halt, clk, reset);
 	`OPjnz: begin
 	   $display("jnz");
 
+	   pc = (regfile[ir `Dest] ? regfile[ir `Src] : pc);
+	   
 	   s <= `Start;
 	end
 
 	`OPjz: begin
-	   $display("jz");
-
+	   $display("jz", regfile[ir `Dest], " ", regfile[ir `Src]);
+	   
+	   pc = (regfile[ir `Dest] ? pc : regfile[ir `Src]);
+	   	   
 	   s <= `Start;
 	end
 
@@ -239,8 +245,11 @@ module processor(halt, clk, reset);
 
 	`OPshift: begin
 	   $display("shift ", regfile[ir `Dest], " ", regfile[ir `Src], " ", regfile[ir `Arg]); 
+
+	   alu_a = regfile[ir `Src];
+	   alu_b = regfile[ir `Arg];
 	   
-	   s <= `Start;
+	   s <= `OPalu;
 	end
 
 	`OPpack: begin
@@ -343,9 +352,7 @@ module alu(bus_out, clk, a, b, ctrl);
    always @(posedge clk) begin
 
       case(ctrl `Opcode)
-	`OPadd:    begin 
-	   bus_out <= a + b;
-	end
+	`OPadd:    bus_out <= a + b;
 	`OPaddv:   bus_out <= ((a & ~(`MASKaddv)) + (b & ~(`MASKaddv))) ^ ((a & `MASKaddv) ^ (b & `MASKaddv));
 	`OPand:    bus_out <= a & b;
 	`OPany:    bus_out <= (a ? 1 : 0);
@@ -359,13 +366,13 @@ module alu(bus_out, clk, a, b, ctrl);
 	`OPxor:    bus_out <= a ^ b;
 	`OPneg:    bus_out <= -a;
 	`OPnegv: begin
-	   bus_out `V1 = -(a `V1);
-	   bus_out `V2 = -(a `V2);
-	   bus_out `V3 = -(a `V3);
-	   bus_out `V4 = -(a `V4);
+	   bus_out `V1 <= -(a `V1);
+	   bus_out `V2 <= -(a `V2);
+	   bus_out `V3 <= -(a `V3);
+	   bus_out `V4 <= -(a `V4);
 	end
-	`OPshift:  begin
-	   
+	`OPshift: begin
+	   bus_out <= ( (b < 0) ? (a << -b) : (a >> b) );
 	end
       endcase // case (ctrl)
 

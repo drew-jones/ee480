@@ -39,7 +39,7 @@
 `define Start    5'b11111
 `define Start1   5'b11110
 
-`define OPadd1   5'b10101
+`define OPalu    5'b10101
 
 // arg field values for extra opcodes
 `define EXst     4'b0001
@@ -71,7 +71,6 @@ module testbench;
       reset = 1;
       reset = 0;
       clk = 0;
-      #10;
    end
 
    always begin
@@ -91,6 +90,8 @@ module processor(halt, clk, reset);
    
    reg 	      `TEXT codemem `CODESIZE;
    reg 	      `DATA mainmem `MEMSIZE;
+   reg 	      `DATA regfile `REGSIZE;
+   
    reg 	      `TEXT pc = 0;
    reg 	      `TEXT ir;
    reg 	      `STATE s = `Start;
@@ -114,11 +115,13 @@ module processor(halt, clk, reset);
       $readmemh("text.vmem", codemem);
       $readmemh("data.vmem", mainmem);
 
+      $readmemh("data.vmem", regfile,15,0);
+      
    end
 
 
    always @(posedge clk) begin
-      $display("\t\tpc=",pc,"\ts=",s);
+      //$display("\t\tpc=",pc,"\ts=",s,"\tmainmem[mainmem[ir `Dest]]=", mainmem[mainmem[ir `Dest]]);
       
       case (s)
 	`Start: begin 
@@ -153,12 +156,16 @@ module processor(halt, clk, reset);
 	`OPst: begin
 	   $display("store");
 
+	   mainmem[regfile[ir `Src]] = regfile[ir `Dest];
+	   
 	   s <= `Start;
 	end
 
 	`OPld: begin
 	   $display("load");
 
+	   regfile[ir `Dest] = mainmem[regfile[ir `Src]];
+	   
 	   s <= `Start;
 	end
 
@@ -174,73 +181,94 @@ module processor(halt, clk, reset);
 	   s <= `Start;
 	end
 
-	`OPadd: begin
-	   $display("add ", mainmem[ir `Dest], " ", mainmem[ir `Src], " ", mainmem[ir `Arg]); 
-
+	// ALU DONE
+	`OPalu: begin
+	   regfile[ir `Dest] = alu_out;
 	   
-	   alu_a <= mainmem[ir `Src];
-	   alu_b <= mainmem[ir `Arg];
-	   
-	   $display("alu_a", alu_a);
-	   $display("alu_b", alu_b);
-	   $display("alu_out", alu_out);
+	   $display("alu_out: ", alu_out);
 	   
 	   s <= `Start;
-	   
-	end // case: `OPadd
+	end
 
-/*	`OPadd1: begin
-	   mainmem[ir `Dest] <= alu_out;
-	   $display("alu_out", alu_out);
-
-	   s <= `Start;
-	end*/
 	
-	`OPaddv: begin
-	   $display("addv");
+	`OPadd: begin
+	   $display("add ", regfile[ir `Dest], " ", regfile[ir `Src], " ", regfile[ir `Arg]); 
 
-	   s <= `Start;
+	   
+	   alu_a = regfile[ir `Src];
+	   alu_b = regfile[ir `Arg];
+	   	   
+	   s <= `OPalu;
+	end 
+
+	`OPaddv: begin
+	   $display("addv ", regfile[ir `Dest], " ", regfile[ir `Src], " ", regfile[ir `Arg]); 
+
+	   alu_a = regfile[ir `Src];
+	   alu_b = regfile[ir `Arg];
+
+	   s <= `OPalu;
 	end
 
 	`OPand: begin
-	   $display("and");
+	   $display("and ", regfile[ir `Dest], " ", regfile[ir `Src], " ", regfile[ir `Arg]); 
 
-	   s <= `Start;
+	   alu_a = regfile[ir `Src];
+	   alu_b = regfile[ir `Arg];
+	   
+	   s <= `OPalu;
 	end
 
 	`OPor: begin
-	   $display("or");
+	   $display("or ", regfile[ir `Dest], " ", regfile[ir `Src], " ", regfile[ir `Arg]); 
 
-	   s <= `Start;
+	   alu_a = regfile[ir `Src];
+	   alu_b = regfile[ir `Arg];
+	   
+	   s <= `OPalu;
 	end
 
 	`OPxor: begin
-	   $display("xor");
+	   $display("xor ", regfile[ir `Dest], " ", regfile[ir `Src], " ", regfile[ir `Arg]); 
 
-	   s <= `Start;
+	   alu_a = regfile[ir `Src];
+	   alu_b = regfile[ir `Arg];
+	   
+	   s <= `OPalu;
 	end
 
 	`OPshift: begin
-	   $display("shift");
-
+	   $display("shift ", regfile[ir `Dest], " ", regfile[ir `Src], " ", regfile[ir `Arg]); 
+	   
 	   s <= `Start;
 	end
 
 	`OPpack: begin
 	   $display("pack");
 
-
+	   regfile[ir `Dest] `V1 = ((ir `Arg & 4'b0001) ? regfile[ir `Src] `V1 : regfile[ir `Dest] `V1);
+	   regfile[ir `Dest] `V2 = ((ir `Arg & 4'b0010) ? regfile[ir `Src] `V2 : regfile[ir `Dest] `V2);
+	   regfile[ir `Dest] `V3 = ((ir `Arg & 4'b0100) ? regfile[ir `Src] `V3 : regfile[ir `Dest] `V3);
+	   regfile[ir `Dest] `V4 = ((ir `Arg & 4'b1000) ? regfile[ir `Src] `V4 : regfile[ir `Dest] `V4);
+	   
 	   s <= `Start;
 	end
 
 	`OPunpack: begin
 	   $display("unpack");
 
+	   regfile[ir `Dest] = ((ir `Arg & 4'b0001) ? regfile[ir `Src] `V1 : 0) +
+			       ((ir `Arg & 4'b0010) ? regfile[ir `Src] `V2 : 0) +
+			       ((ir `Arg & 4'b0100) ? regfile[ir `Src] `V3 : 0) +
+			       ((ir `Arg & 4'b1000) ? regfile[ir `Src] `V4 : 0);
+	   
 	   s <= `Start;
 	end
 
 	`OPli: begin
 	   $display("li");
+
+	   regfile[ir `Dest] = ((ir `Imm & 8'h80) ? 32'hffffff00 : 0) | (ir `Imm & 8'hff);
 
 	   s <= `Start;
 	end
@@ -248,31 +276,45 @@ module processor(halt, clk, reset);
 	`OPmorei: begin
 	   $display("morei");
 
+	   regfile[ir `Dest] = (regfile[ir `Dest] << 8) | (ir `Imm & 8'hff);
+
 	   s <= `Start;
 	end
 
 	`OPany: begin
-	   $display("any");
-
-	   s <= `Start;
+	   $display("any ", regfile[ir `Dest], " ", regfile[ir `Src]);
+	   
+	   alu_a = regfile[ir `Src];
+	   alu_b = 0;
+	   
+	   s <= `OPalu;
 	end
 
 	`OPanyv: begin
-	   $display("anyv");
-
-	   s <= `Start;
+	   $display("anyv ", regfile[ir `Dest], " ", regfile[ir `Src]);
+	   
+	   alu_a = regfile[ir `Src];
+	   alu_b = 0;
+	   
+	   s <= `OPalu;
 	end
 
 	`OPneg: begin
-	   $display("neg");
-
-	   s <= `Start;
+	   $display("neg ", regfile[ir `Dest], " ", regfile[ir `Src]);
+	   
+	   alu_a = regfile[ir `Src];
+	   alu_b = 0;
+	   
+	   s <= `OPalu;
 	end
 
 	`OPnegv: begin
-	   $display("negv");
-
-	   s <= `Start;
+	   $display("negv ", regfile[ir `Dest], " ", regfile[ir `Src]);
+	   
+	   alu_a = regfile[ir `Src];
+	   alu_b = 0;
+	   	   
+	   s <= `OPalu;
 	end
 
 	`OPsys: begin
@@ -304,7 +346,7 @@ module alu(bus_out, clk, a, b, ctrl);
 	`OPadd:    begin 
 	   bus_out <= a + b;
 	end
-	`OPaddv:   bus_out <= ((a & ~(`MASKaddv)) + (b & ~(`MASKaddv))) ^ ((a ^ `MASKaddv) ^ (b ^ `MASKaddv));
+	`OPaddv:   bus_out <= ((a & ~(`MASKaddv)) + (b & ~(`MASKaddv))) ^ ((a & `MASKaddv) ^ (b & `MASKaddv));
 	`OPand:    bus_out <= a & b;
 	`OPany:    bus_out <= (a ? 1 : 0);
 	`OPanyv: begin

@@ -1,4 +1,4 @@
-; EE480 Fall 2016
+B; EE480 Fall 2016
 ; AIK loQDon assembler definition
 ; October 1, 2016
 ; Matt Ruffner
@@ -31,7 +31,7 @@ st	$.t, $.s	:=	0b1111:4 .t:4 .s:4 0b0001:4
 ld	$.d, $.s	:=	0b1111:4 .d:4 .s:4 0b0010:4
 jnz	$.c, $.a	:=	0b1111:4 .c:4 .a:4 0b0011:4
 jz	$.c, $.a	:= 	0b1111:4 .c:4 .a:4 0b0100:4
-nop	     		:=	1:16
+nop	     		:=	-1:16
 
 .const {
   zero pc sp fp ra rv

@@ -1,14 +1,18 @@
 `define STATE    [4:0]
 `define TEXT     [15:0]
 `define DATA     [31:0]
-`define REGSIZE  [65535:0]
+`define REGSIZE  [15:0]
+`define CODESIZE [65535:0]
 `define MEMSIZE  [65535:0]
 
+// field locations within instruction
 `define Opcode   [15:12]
 `define Dest     [11:8]
-`define Source   [7:4]
+`define Src      [7:4]
 `define Arg      [3:0]
+`define Imm      [15:0]
 
+// opcode and state number
 `define OPadd    4'b0000
 `define OPaddv   4'b0001
 `define OPand    4'b0010
@@ -26,19 +30,33 @@
 `define OPsys    4'b1110
 `define OPextra  4'b1111
 
-// state numbers only
+// state numbers only for extra opcodes
 `define OPst     5'b10000
 `define OPld     5'b10001
 `define OPjnz    5'b10010
 `define OPjz     5'b10011
+`define OPnop    5'b10100
 `define Start    5'b11111
 `define Start1   5'b11110
 
+`define OPadd1   5'b10101
 
+// arg field values for extra opcodes
 `define EXst     4'b0001
 `define EXld     4'b0010
 `define EXjnz    4'b0011
 `define EXjz     4'b0100
+`define EXnop    4'b1111
+
+// field locations for vector ops
+`define V1       [7:0]
+`define V2       [15:8]
+`define V3       [23:16]
+`define V4       [31:24]
+
+
+// mask for cutting carry chains
+`define MASKaddv 32'h80808080
 
 
 
@@ -53,6 +71,7 @@ module testbench;
       reset = 1;
       reset = 0;
       clk = 0;
+      #10;
    end
 
    always begin
@@ -70,13 +89,18 @@ module processor(halt, clk, reset);
    output reg halt;
    input      reset, clk;
    
-   reg 	      `TEXT regfile `REGSIZE;
+   reg 	      `TEXT codemem `CODESIZE;
    reg 	      `DATA mainmem `MEMSIZE;
    reg 	      `TEXT pc = 0;
    reg 	      `TEXT ir;
    reg 	      `STATE s = `Start;
    
-   integer a;
+   wire       `DATA alu_out;
+   reg 	      `DATA alu_a, alu_b;
+ 	      
+
+   alu a(alu_out, clk, alu_a, alu_b, ir);
+   
    
    always @(reset) begin
       halt = 0;
@@ -87,9 +111,9 @@ module processor(halt, clk, reset);
       $display("processor reset");
       
       
-      $readmemh("text.vmem", regfile);
+      $readmemh("text.vmem", codemem);
       $readmemh("data.vmem", mainmem);
-      
+
    end
 
 
@@ -98,7 +122,7 @@ module processor(halt, clk, reset);
       
       case (s)
 	`Start: begin 
-	   ir <= regfile[pc];
+	   ir <= codemem[pc];
 	   s <= `Start1;
 	end
 	
@@ -109,63 +133,69 @@ module processor(halt, clk, reset);
 	   case (ir `Opcode)
 	     `OPextra:
 	       case (ir `Arg)      // use Arg  as extended opcode
-		 // store
-		 `EXst: s <= `OPst;
-		 
-		 // load
-		 `EXld: s <= `OPld;
-		 
-		 // jnz
-		 `EXjnz: s <= `OPjnz;
-
-		 // jz
-		 `EXjz: s <= `OPjz;
-		 
-		 default: s <= `OPsys;
+		 `EXst: s <= `OPst;		 // store
+		 `EXld: s <= `OPld;		 // load
+		 `EXjnz: s <= `OPjnz;		 // jnz
+		 `EXjz: s <= `OPjz;		 // jz
+		 default: s <= `OPnop;
 		 
 	       endcase // case (ir `Arg)
 
-	     default: s <= ir `Opcode;
-	     // most instructions, state # is opcode
+	     default: s <= ir `Opcode;	     // rest of instructions
 	   endcase // case (ir `Opcode)
-	   
 	end // case: `Start1
 
-
+	`OPnop: begin
+	   $display("nop");
+	   s <= `Start;
+	end
+	
 	`OPst: begin
 	   $display("store");
 
 	   s <= `Start;
 	end
-	
+
 	`OPld: begin
 	   $display("load");
 
 	   s <= `Start;
 	end
-	
+
 	`OPjnz: begin
 	   $display("jnz");
 
 	   s <= `Start;
 	end
-	
+
 	`OPjz: begin
 	   $display("jz");
 
 	   s <= `Start;
 	end
-	
-
-
-	////
 
 	`OPadd: begin
-	   $display("add"); 
-	   	   
-	   s <= `Start;
-	end
+	   $display("add ", mainmem[ir `Dest], " ", mainmem[ir `Src], " ", mainmem[ir `Arg]); 
 
+	   
+	   alu_a <= mainmem[ir `Src];
+	   alu_b <= mainmem[ir `Arg];
+	   
+	   $display("alu_a", alu_a);
+	   $display("alu_b", alu_b);
+	   $display("alu_out", alu_out);
+	   
+	   s <= `Start;
+	   
+	end // case: `OPadd
+
+/*	`OPadd1: begin
+	   mainmem[ir `Dest] <= alu_out;
+	   $display("alu_out", alu_out);
+
+	   s <= `Start;
+	end*/
+	
 	`OPaddv: begin
 	   $display("addv");
 
@@ -251,18 +281,12 @@ module processor(halt, clk, reset);
 	   halt <= 1;
 	end
 	
-	default: begin
-	   halt <= 1;
-	   $display("halting");
-	end
-	
-	
+	default: halt <= 1;
 	   
       endcase // case (s)
       
    end
-   
-   
+
 endmodule // processor
 
 		 
@@ -270,18 +294,39 @@ endmodule // processor
 module alu(bus_out, clk, a, b, ctrl);
    output reg `DATA bus_out;
    input      clk;
-   input      `DATA a;
-   input      `DATA b;
+   input      `DATA a, b;
    input      `TEXT ctrl;
    
 
    always @(posedge clk) begin
 
       case(ctrl `Opcode)
-	`OPadd: bus_out <= a + b;	
+	`OPadd:    begin 
+	   bus_out <= a + b;
+	end
+	`OPaddv:   bus_out <= ((a & ~(`MASKaddv)) + (b & ~(`MASKaddv))) ^ ((a ^ `MASKaddv) ^ (b ^ `MASKaddv));
+	`OPand:    bus_out <= a & b;
+	`OPany:    bus_out <= (a ? 1 : 0);
+	`OPanyv: begin
+	   bus_out[0]  <= (a & 32'h000000FF ? 1 : 0);
+	   bus_out[8]  <= (a & 32'h0000FF00 ? 1 : 0);
+	   bus_out[16] <= (a & 32'h00FF0000 ? 1 : 0);
+	   bus_out[24] <= (a & 32'hFF000000 ? 1 : 0);
+	end
+	`OPor:     bus_out <= a | b;
+	`OPxor:    bus_out <= a ^ b;
+	`OPneg:    bus_out <= -a;
+	`OPnegv: begin
+	   bus_out `V1 = -(a `V1);
+	   bus_out `V2 = -(a `V2);
+	   bus_out `V3 = -(a `V3);
+	   bus_out `V4 = -(a `V4);
+	end
+	`OPshift:  begin
+	   
+	end
       endcase // case (ctrl)
 
-      
    end
 
 

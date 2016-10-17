@@ -373,7 +373,7 @@ module alu(bus_out, clk, a, b, ctrl);
 	   bus_out `V4 <= -(a `V4);
 	end
 	`OPshift: begin
-	   bus_out <= ( (b < 0) ? (a << -b) : (a >> b) );
+	   bus_out <= ( (b < 0) ? (a >> -b) : (a << b) );
 	end
       endcase // case (ctrl)
 

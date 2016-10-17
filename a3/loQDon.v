@@ -353,9 +353,9 @@ module alu(bus_out, clk, a, b, ctrl);
    always @(posedge clk) begin
       
       case(ctrl)
-	`OPadd: bus_out = a + b;
+	`OPadd: bus_out <= a + b;
 	`OPaddv:   bus_out <= ((a & ~(`MASKaddv)) + (b & ~(`MASKaddv))) ^ ((a & `MASKaddv) ^ (b & `MASKaddv));
-	`OPand: bus_out = a & b; 
+	`OPand: bus_out <= a & b; 
 	`OPany:    bus_out <= (a ? 1 : 0);
 	`OPanyv: begin
 	   bus_out[0]  <= (a & 32'h000000FF ? 1 : 0);

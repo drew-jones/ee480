@@ -350,7 +350,7 @@ module alu(bus_out, clk, a, b, ctrl);
    input 	  [3:0] ctrl;
    
 
-   always @(posedge clk) begin
+   always @(negedge clk) begin
       
       case(ctrl)
 	`OPadd: bus_out <= a + b;

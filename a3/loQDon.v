@@ -126,7 +126,7 @@ module processor(halt, clk, reset);
 	   ir <= codemem[pc];
 	   s <= `Start1;
 
-	   $display("$u0: %d\n$u1: %d\n$u2: %d\n$u3: %d", regfile[6],regfile[7],regfile[8],regfile[9]);
+	   $display("$u0: %d\n$u1: %d\n$u2: %d\n$u3: %d\n$u4: %d\n$u5: %d", regfile[6],regfile[7],regfile[8],regfile[9],regfile[10],regfile[11]);
 	   //$display("\n$u1: ", regfile[7],"\n$u2: ", regfile[8],"\n$u3: ", regfile[9],"\n$u4: ", regfile[10],"\n$u5: ", regfile[11],"\n$u6: ", regfile[12],"\n$u7: ", regfile[13], "\n$u8: ", regfile[14], "\n$u9: ", regfile[15]);
 
 	end

@@ -70,7 +70,7 @@ module testbench;
    initial begin
       reset = 1;
       reset = 0;
-      clk = 0;
+      clk = 1;
    end
 
    always begin
@@ -90,17 +90,18 @@ module processor(halt, clk, reset);
    
    reg 	      `TEXT codemem `CODESIZE;
    reg 	      `DATA mainmem `MEMSIZE;
-   reg 	      `DATA regfile `REGSIZE;
+   reg   signed     `DATA regfile `REGSIZE;
    
    reg 	      `TEXT pc = 0;
    reg 	      `TEXT ir;
    reg 	      `STATE s = `Start;
    
-   wire       `DATA alu_out;
-   reg 	      `DATA alu_a, alu_b;
- 	      
+   wire signed `DATA alu_out;
+   reg signed `DATA alu_a, alu_b;
+ 
+ 
 
-   alu a(alu_out, clk, alu_a, alu_b, ir);
+   alu a(alu_out, clk, alu_a, alu_b, ir `Opcode);
    
    
    always @(reset) begin
@@ -110,7 +111,6 @@ module processor(halt, clk, reset);
       s = `Start;
 
       $display("processor reset");
-      
       
       $readmemh("text.vmem", codemem);
       $readmemh("data.vmem", mainmem);
@@ -126,15 +126,15 @@ module processor(halt, clk, reset);
 	   ir <= codemem[pc];
 	   s <= `Start1;
 
-	   $display("$u0: ", regfile[6],"\n$u1: ", regfile[7],"\n$u2: ", regfile[8],"\n$u3: ", regfile[9],"\n$u4: ", regfile[10],"\n$u5: ", regfile[11],"\n$u6: ", regfile[12],"\n$u7: ", regfile[13], "\n$u8: ", regfile[14], "\n$u9: ", regfile[15]);
-
+	   $display("$u0: %d\n$u1: %d\n$u2: %d\n$u3: %d", regfile[6],regfile[7],regfile[8],regfile[9]);
+	   //$display("\n$u1: ", regfile[7],"\n$u2: ", regfile[8],"\n$u3: ", regfile[9],"\n$u4: ", regfile[10],"\n$u5: ", regfile[11],"\n$u6: ", regfile[12],"\n$u7: ", regfile[13], "\n$u8: ", regfile[14], "\n$u9: ", regfile[15]);
 
 	end
 	
 	`Start1: begin
 	   // bump pc	   
 	   pc <= pc + 1;
-
+		
 	   case (ir `Opcode)
 	     `OPextra:
 	       case (ir `Arg)      // use Arg  as extended opcode
@@ -189,26 +189,27 @@ module processor(halt, clk, reset);
 
 	// ALU DONE
 	`OPalu: begin
+		
 	   regfile[ir `Dest] = alu_out;
 	   
 	   $display("alu_out: ", alu_out);
+	   
 	   
 	   s <= `Start;
 	end
 
 	
 	`OPadd: begin
-	   $display("add ", regfile[ir `Dest], " ", regfile[ir `Src], " ", regfile[ir `Arg]); 
-
+	   $display("add ", ir `Dest, " ", regfile[ir `Src], " ", regfile[ir `Arg]); 
 	   
 	   alu_a = regfile[ir `Src];
 	   alu_b = regfile[ir `Arg];
-	   	   
+
 	   s <= `OPalu;
 	end 
 
 	`OPaddv: begin
-	   $display("addv ", regfile[ir `Dest], " ", regfile[ir `Src], " ", regfile[ir `Arg]); 
+	   $display("addv ", ir `Dest, " ", regfile[ir `Src], " ", regfile[ir `Arg]); 
 
 	   alu_a = regfile[ir `Src];
 	   alu_b = regfile[ir `Arg];
@@ -217,11 +218,11 @@ module processor(halt, clk, reset);
 	end
 
 	`OPand: begin
-	   $display("and ", regfile[ir `Dest], " ", regfile[ir `Src], " ", regfile[ir `Arg]); 
+	   $display("and ", ir `Dest, " ", regfile[ir `Src], " ", regfile[ir `Arg]); 
 
 	   alu_a = regfile[ir `Src];
 	   alu_b = regfile[ir `Arg];
-	   
+	   	   	   
 	   s <= `OPalu;
 	end
 
@@ -344,17 +345,17 @@ endmodule // processor
 
 module alu(bus_out, clk, a, b, ctrl);
    output reg `DATA bus_out;
-   input      clk;
-   input      `DATA a, b;
-   input      `TEXT ctrl;
+   input      clk, en;
+   input  signed    `DATA a, b;
+   input 	  [3:0] ctrl;
    
 
    always @(posedge clk) begin
-
-      case(ctrl `Opcode)
-	`OPadd:    bus_out <= a + b;
+      
+      case(ctrl)
+	`OPadd: bus_out = a + b;
 	`OPaddv:   bus_out <= ((a & ~(`MASKaddv)) + (b & ~(`MASKaddv))) ^ ((a & `MASKaddv) ^ (b & `MASKaddv));
-	`OPand:    bus_out <= a & b;
+	`OPand: bus_out = a & b; 
 	`OPany:    bus_out <= (a ? 1 : 0);
 	`OPanyv: begin
 	   bus_out[0]  <= (a & 32'h000000FF ? 1 : 0);
@@ -376,7 +377,5 @@ module alu(bus_out, clk, a, b, ctrl);
 	end
       endcase // case (ctrl)
 
-   end
-
-
+	end
 endmodule // alu

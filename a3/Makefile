@@ -2,4 +2,4 @@ FILE=loQDon.v
 OUTPUT=loQDon
 
 default:
-	iverilog $(FILE) -o $(OUTPUT)
+	iverilog -o $(OUTPUT) $(FILE)
